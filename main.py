@@ -66,35 +66,44 @@ def handle_message(event):
         if event.message.mention:
             for mentionee in event.message.mention.mentionees:
                 admin_list.add(mentionee.user_id)
-                line_bot_api.reply_message(event.reply_token, TextSendMessage(text='เพิ่มแอดมินแล้ว'))
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text='✅ เพิ่มแอดมินเรียบร้อย'))
         else:
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text='โปรดเมนชันคนที่ต้องการเพิ่ม'))
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text='❗ กรุณาเมนชันคนที่ต้องการเพิ่ม'))
 
     elif text.startswith('!adminlist') and user_id in admin_list:
         names = [get_user_name(uid, group_id) for uid in admin_list]
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text='แอดมิน:\n' + '\n'.join(names)))
+        reply = 'แอดมินทั้งหมด:\n' + ('\n'.join(names) if names else 'ยังไม่มีแอดมิน')
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
     elif text.startswith('!unblock') and user_id in admin_list:
         parts = text.split()
         if len(parts) == 2:
             blocked_id = parts[1]
             blacklist.discard(blocked_id)
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text='ปลดบล็อกแล้ว'))
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text='✅ ปลดบล็อกแล้ว'))
+        else:
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text='❗ ใส่ user_id ด้วย'))
 
     elif text == '!startread' and user_id in admin_list:
         read_tracking[group_id] = set()
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text='เริ่มจับคนอ่านแล้ว (ให้พิมพ์ !read)'))
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text='🔍 เริ่มจับคนอ่านแล้ว'))
 
     elif text == '!read':
         if group_id in read_tracking:
             read_tracking[group_id].add(user_id)
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text='รับทราบการอ่านข้อความ'))
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text='📖 รับทราบการอ่านข้อความแล้ว'))
 
     elif text == '!whoread' and user_id in admin_list:
         if group_id in read_tracking:
             readers = [get_user_name(uid, group_id) for uid in read_tracking[group_id]]
-            msg = '\n'.join(readers) if readers else 'ยังไม่มีใครอ่านข้อความ'
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text='คนที่อ่านแล้ว:\n' + msg))
+            msg = '🧍‍♂️ คนที่อ่านแล้ว:\n' + ('\n'.join(readers) if readers else 'ยังไม่มีใครอ่าน')
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text=msg))
+        else:
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text='❗ ยังไม่ได้เริ่มจับอ่าน'))
+
+    else:
+        # ตอบกลับทั่วไป
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text='❓ คำสั่งไม่ถูกต้องหรือคุณไม่มีสิทธิ์'))
 
 @handler.add(UnsendEvent)
 def handle_unsend(event):
@@ -105,17 +114,19 @@ def handle_unsend(event):
         text = info['text']
         group_id = getattr(event.source, 'group_id', None)
         if group_id:
-            line_bot_api.push_message(group_id, TextSendMessage(text=f'{name} ลบข้อความ: {text}'))
+            line_bot_api.push_message(group_id, TextSendMessage(text=f'🚨 {name} ลบข้อความ: {text}'))
 
 @handler.add(MemberLeftEvent)
 def handle_kick(event):
     group_id = getattr(event.source, 'group_id', None)
-    kicked = event.left.members[0].user_id if event.left.members else None
     kicker = event.source.user_id
     if kicker not in admin_list:
         blacklist.add(kicker)
-        line_bot_api.kickout_from_group(group_id, kicker)
-        line_bot_api.push_message(group_id, TextSendMessage(text='บอทเตะผู้ไม่ใช่แอดมินที่เตะคนอื่น'))
+        try:
+            line_bot_api.kickout_from_group(group_id, kicker)
+        except:
+            pass
+        line_bot_api.push_message(group_id, TextSendMessage(text='🚫 มีผู้ที่ไม่ใช่แอดมินเตะคนอื่นออก — บอทเตะกลับ'))
 
 def get_user_name(user_id, group_id):
     try:
