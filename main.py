@@ -13,7 +13,8 @@ CHANNEL_SECRET = 'c4485d07c997249825988371f0a9897b'
 line_bot_api = LineBotApi(ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
 
-admin_list = set()
+# เพิ่ม user_id ของคุณไว้ใน admin_list ตรงนี้
+admin_list = set(["Uxxxxxxxxxxxxxxxxxxxxxx"])
 blacklist = set()
 read_tracking = {}
 
@@ -49,6 +50,8 @@ def handle_message(event):
     user_id = event.source.user_id
     group_id = getattr(event.source, 'group_id', None)
     text = event.message.text.strip()
+
+    print("USER ID:", user_id)  # เพื่อดู user_id ตัวเองใน log
 
     if group_id:
         if 'messages' not in read_tracking:
@@ -102,7 +105,6 @@ def handle_message(event):
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text='❗ ยังไม่ได้เริ่มจับอ่าน'))
 
     else:
-        # ตอบกลับทั่วไป
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text='❓ คำสั่งไม่ถูกต้องหรือคุณไม่มีสิทธิ์'))
 
 @handler.add(UnsendEvent)
